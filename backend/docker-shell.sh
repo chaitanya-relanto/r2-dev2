@@ -50,6 +50,7 @@ docker run -d \
     -p "${HOST_PORT}:8000" \
     --env-file configs/.env \
     --env-file configs/secrets/.env \
+    --network r2dev2-network \
     --name $CONTAINER_NAME \
     $IMAGE_NAME
 

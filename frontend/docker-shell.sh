@@ -49,6 +49,7 @@ echo "Using environment file: .env.local"
 docker run -d \
     -p "${HOST_PORT}:3000" \
     --env-file .env.local \
+    --network r2dev2-network \
     --name $CONTAINER_NAME \
     $IMAGE_NAME
 
