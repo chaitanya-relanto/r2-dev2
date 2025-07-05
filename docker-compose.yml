@@ -1,0 +1,38 @@
+services:
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: r2dev2-backend
+    container_name: r2dev2-backend-container
+    ports:
+      - "8015:8000"  # Host port 8015 -> Container port 8000
+    env_file:
+      - ./backend/configs/.env
+      - ./backend/configs/secrets/.env
+    networks:
+      - r2dev2-network
+    restart: unless-stopped
+
+  # Frontend Service (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: r2dev2-frontend
+    container_name: r2dev2-frontend-container
+    ports:
+      - "3000:3000"  # Host port 3000 -> Container port 3000
+    env_file:
+      - ./frontend/.env.local
+    networks:
+      - r2dev2-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Custom network (same as created by docker-shell.sh scripts)
+networks:
+  r2dev2-network:
+    driver: bridge 
