@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { getApiBaseUrl } from '@/utils/api';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -25,7 +26,7 @@ export default function Navbar() {
       if (!user) return;
       
       try {
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const API_BASE_URL = getApiBaseUrl();
         const response = await fetch(`${API_BASE_URL}/data/users/${user.user_id}/info`);
         
         if (response.ok) {

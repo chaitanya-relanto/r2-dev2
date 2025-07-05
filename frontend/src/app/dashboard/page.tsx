@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { getApiBaseUrl } from '@/utils/api';
 
 interface TicketSummary {
   open: number;
@@ -120,7 +121,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       
       // Debug: Log the user object and API URL
       console.log('🔍 Current user object:', user);
@@ -322,7 +323,7 @@ export default function DashboardPage() {
     setShowTicketModal(true);
     
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       let endpoint = '';
       
       switch (ticketType) {
@@ -358,7 +359,7 @@ export default function DashboardPage() {
     setShowTicketModal(true);
     
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       
       // Fetch all tickets
       const response = await fetch(`${API_BASE_URL}/data/users/${user.user_id}/tickets`);
@@ -377,7 +378,7 @@ export default function DashboardPage() {
 
   const handleViewPR = async (prId: string, ticketId: string) => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       
       // Try to get PR details with diff/summary
       const prResponse = await fetch(`${API_BASE_URL}/data/pull-requests/${prId}/diff`);
@@ -444,7 +445,7 @@ export default function DashboardPage() {
 
   const handleViewDoc = async (docId: string) => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       
       // Fetch document details
       const docResponse = await fetch(`${API_BASE_URL}/data/docs/${docId}`);

@@ -8,6 +8,7 @@ import SendIcon from '@mui/icons-material/Send';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Image from 'next/image';
+import { getApiBaseUrl } from '@/utils/api';
 
 interface Message {
   text: string;
@@ -51,7 +52,7 @@ export default function ChatPage() {
         payload.session_id = sessionId;
       }
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       
       const res = await fetch(`${API_BASE_URL}/agent/chat`, {
         method: 'POST',
