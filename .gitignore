@@ -1,0 +1,21 @@
+# Python
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+**/.venv/
+
+# Secret Environment variables
+**/secrets/.env
+
+# Logs
+**/logs/
+
+# IDEs
+.vscode/
+
+# Data
+**/data/
+
+# OS-specific
+.DS_Store

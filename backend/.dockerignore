@@ -1,0 +1,25 @@
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS-specific
+.DS_Store
+
+# Testing caches
+.pytest_cache/
+.mypy_cache/
+
+# Editor/IDE specific
+.vscode/
+
+# Project-specific directories to exclude
+artifacts/
+logs/
+data/
+
+# Git files
+.git/
+.gitignore 
