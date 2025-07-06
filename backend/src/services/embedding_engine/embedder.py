@@ -1,5 +1,4 @@
-import os
-import psycopg
+import psycopg  
 from dotenv import load_dotenv
 
 from langchain_core.documents import Document
@@ -8,6 +7,7 @@ from langchain_postgres import PGVector
 from langchain.text_splitter import MarkdownTextSplitter
 
 from src.utils.logger import get_logger
+from src.services.database_manager.connection import get_db_connection_string
 
 # --- Setup ---
 load_dotenv("configs/.env")
@@ -27,7 +27,8 @@ class EmbeddingEngine:
         """Initializes the EmbeddingEngine."""
         logger.info("Initializing EmbeddingEngine...", extra=log_extra)
         self._load_config()
-        self._build_connection_string()
+        self.connection_string = get_db_connection_string()
+        self.direct_connection_str = get_db_connection_string(driver="psycopg2")
         self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
         self.text_splitter = MarkdownTextSplitter(
             chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
@@ -35,32 +36,10 @@ class EmbeddingEngine:
 
     def _load_config(self):
         """Loads configuration from environment variables."""
-        self.pg_host = os.getenv("PG_HOST")
-        self.pg_port = os.getenv("PG_PORT")
-        self.pg_db = os.getenv("PG_DB")
-        self.pg_user = os.getenv("PG_USER")
-        self.pg_password = os.getenv("PG_PASSWORD")
-
-        if not all([self.pg_host, self.pg_port, self.pg_db, self.pg_user]):
-            raise ValueError("One or more required PostgreSQL environment variables are not set.")
-
         self.collection_name = "developer_docs"
         self.embedding_model = "text-embedding-3-large"
         self.chunk_size = 500
         self.chunk_overlap = 200
-
-    def _build_connection_string(self):
-        """Builds the connection strings for psycopg and PGVector."""
-        user_info = self.pg_user or ""
-        if self.pg_password:
-            user_info += f":{self.pg_password}"
-
-        self.connection_string = (
-            f"postgresql+psycopg://{user_info}@{self.pg_host}:{self.pg_port}/{self.pg_db}"
-        )
-        self.direct_connection_str = (
-            f"postgresql://{user_info}@{self.pg_host}:{self.pg_port}/{self.pg_db}"
-        )
 
     def _get_db_connection(self):
         """Establishes a direct psycopg connection to the database."""

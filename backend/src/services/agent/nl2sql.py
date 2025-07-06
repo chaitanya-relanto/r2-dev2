@@ -1,10 +1,9 @@
-import os
 import json
 from typing import TypedDict, Annotated, Optional, cast
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, text, Engine
+from sqlalchemy import text, Engine
 
 from langchain_core.messages import AnyMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -12,7 +11,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseLanguageModel
 
 from src.utils.logger import get_logger
-from src.utils.database import get_engine
+from src.services.database_manager.connection import get_engine
 
 # --- Setup ---
 load_dotenv("configs/.env")

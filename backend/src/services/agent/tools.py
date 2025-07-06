@@ -1,9 +1,8 @@
 from langchain_core.tools import tool
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-import os
+from sqlalchemy import text
 from dotenv import load_dotenv
 
+from src.services.database_manager.connection import get_db_session
 from src.services.pr_summarizer.summarize import PRSummarizer
 from src.services.doc_search.search import VectorSearchService
 from src.utils.logger import get_logger
@@ -12,31 +11,6 @@ from src.utils.logger import get_logger
 load_dotenv("configs/.env")
 load_dotenv("configs/secrets/.env")
 logger = get_logger(__name__)
-
-# --- Database Setup ---
-def get_db_session():
-    """Establishes a SQLAlchemy session to the database."""
-    try:
-        pg_host = os.getenv("PG_HOST")
-        pg_port = os.getenv("PG_PORT")
-        pg_db = os.getenv("PG_DB")
-        pg_user = os.getenv("PG_USER")
-        pg_password = os.getenv("PG_PASSWORD")
-
-        if not all([pg_host, pg_port, pg_db, pg_user]):
-            raise ValueError("Database environment variables are not fully set.")
-
-        user_info = pg_user or ""
-        if pg_password:
-            user_info += f":{pg_password}"
-
-        db_url = f"postgresql+psycopg://{user_info}@{pg_host}:{pg_port}/{pg_db}"
-        engine = create_engine(db_url)
-        Session = sessionmaker(bind=engine)
-        return Session()
-    except Exception as e:
-        logger.error(f"Database session could not be established: {e}", exc_info=True)
-        raise
 
 # --- Service Instantiation ---
 try:

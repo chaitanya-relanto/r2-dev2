@@ -1,4 +1,3 @@
-import os
 from dotenv import load_dotenv
 
 from langchain_core.prompts import PromptTemplate
@@ -7,6 +6,7 @@ from langchain_postgres import PGVector
 from langchain.chains import RetrievalQA
 
 from src.utils.logger import get_logger
+from src.services.database_manager.connection import get_db_connection_string
 
 # --- Setup ---
 
@@ -33,22 +33,7 @@ class VectorSearchService:
         logger.info("Initializing VectorSearchService...", extra=log_extra)
 
         # 1. Construct PostgreSQL connection string
-        pg_host = os.getenv("PG_HOST")
-        pg_port = os.getenv("PG_PORT")
-        pg_db = os.getenv("PG_DB")
-        pg_user = os.getenv("PG_USER")
-        pg_password = os.getenv("PG_PASSWORD")
-
-        if not all([pg_host, pg_port, pg_db, pg_user]):
-            raise ValueError("Required PostgreSQL environment variables are not set.")
-
-        user_info = pg_user or ""
-        if pg_password:
-            user_info += f":{pg_password}"
-
-        connection = (
-            f"postgresql+psycopg://{user_info}@{pg_host}:{pg_port}/{pg_db}"
-        )
+        connection = get_db_connection_string()
 
         # 2. Initialize embeddings
         embeddings = OpenAIEmbeddings(model="text-embedding-3-large")

@@ -1,8 +1,7 @@
-import os
 import uuid
 import json
 from pathlib import Path
-from typing import TypedDict, Annotated, Literal, Hashable, cast, Optional
+from typing import TypedDict, Annotated, Hashable, cast, Optional
 
 from dotenv import load_dotenv
 from langchain_core.messages import AnyMessage, HumanMessage, ToolMessage, AIMessage
@@ -13,10 +12,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import InMemorySaver
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-
 from src.utils.logger import get_logger
+from src.services.database_manager.connection import get_engine
 from src.services.agent.tools import (
     pr_diff_tool,
     pr_summary_tool,
@@ -62,23 +59,11 @@ class ChatAgent:
         self.sql_generation_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
         # NL2SQL Service
-        db_engine = self._get_db_engine()
+        db_engine = get_engine()
         self.nl2sql_service = NL2SQLService(llm=self.sql_generation_llm, db_engine=db_engine)
 
         self.graph = self.build_graph()
         logger.info("ChatAgent graph built successfully.")
-
-    def _get_db_engine(self):
-        pg_host = os.getenv("PG_HOST")
-        pg_port = os.getenv("PG_PORT")
-        pg_db = os.getenv("PG_DB")
-        pg_user = os.getenv("PG_USER")
-        pg_password = os.getenv("PG_PASSWORD")
-        user_info = pg_user or ""
-        if pg_password:
-            user_info += f":{pg_password}"
-        db_url = f"postgresql+psycopg://{user_info}@{pg_host}:{pg_port}/{pg_db}"
-        return create_engine(db_url)
 
     def build_graph(self):
         graph = StateGraph(AgentState)
@@ -188,12 +173,15 @@ class ChatAgent:
             return "generate_response"
         return last_message.tool_calls[0]["name"]
 
-    def run(self, user_query: str, user_id: str, session_id: str | None = None):
+    def run(self, user_query: str, user_id: str, session_id: str, history: list[AnyMessage] | None = None):
         session_id = session_id or str(uuid.uuid4())
         config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+
+        messages = history or []
+        messages.append(HumanMessage(content=user_query))
         
         initial_state = {
-            "messages": [HumanMessage(content=user_query)],
+            "messages": messages,
             "user_id": user_id,
             "is_sql_query": False,
             "selected_ticket_id": None,
@@ -207,25 +195,29 @@ if __name__ == "__main__":
     agent = ChatAgent()
     test_user_id = "fcb7fd5e-4942-4385-96cc-6765a3c1f553" # Vito Corleone
     
-    test_prompts = [
-        "What are my open Jira tickets?",
-        "Find my tickets related to 'bug fixes'.",
-        "How do I set up and run the local development environment?",
-        "Summarize the PR for ticket_id 'your-ticket-id-here'", # Replace with a real ticket ID from a run
-    ]
-    
+    # Test conversation with history
     thread_id = str(uuid.uuid4())
     print(f"--- Using Session/Thread ID: {thread_id} for user: {test_user_id} ---")
 
-    for i, prompt in enumerate(test_prompts):
-        print(f"\\n--- Test Prompt {i+1} ---")
-        print(f"Input: {prompt}")
-        # Manual injection for test case
-        if "your-ticket-id-here" in prompt:
-            # In a real scenario, this would be retrieved from a previous turn
-            first_ticket_id = "22e5d89c-96eb-4bed-b807-6e29c897e5b0"
-            prompt = prompt.replace("your-ticket-id-here", first_ticket_id)
+    # Turn 1
+    prompt1 = "What are my open Jira tickets?"
+    print(f"\\n--- Turn 1 ---")
+    print(f"Input: {prompt1}")
+    response1 = agent.run(prompt1, user_id=test_user_id, session_id=thread_id)
+    print(f"Output: {response1}")
+    print("-" * 20)
 
-        final_response = agent.run(prompt, user_id=test_user_id, session_id=thread_id)
-        print(f"Output: {final_response}")
-        print("-" * (20 + len(str(i+1)))) 
+    # Turn 2 (with history)
+    prompt2 = "Find my tickets related to 'bug fixes'."
+    print(f"\\n--- Turn 2 ---")
+    print(f"Input: {prompt2}")
+    
+    # Simulate fetching history
+    history = [
+        HumanMessage(content=prompt1),
+        AIMessage(content=response1),
+    ]
+    
+    response2 = agent.run(prompt2, user_id=test_user_id, session_id=thread_id, history=history)
+    print(f"Output: {response2}")
+    print("-" * 20) 
