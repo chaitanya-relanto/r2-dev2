@@ -9,7 +9,7 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_BASE_URL_SERVER || 'http://r2dev2-backend-container:8000';
   } else {
     // Client-side: use browser-to-host communication
-    const url = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+    const url = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8015';
     console.log('🔍 API Base URL:', url);
     return url;
   }
