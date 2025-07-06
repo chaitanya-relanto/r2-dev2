@@ -118,6 +118,20 @@ async def get_sessions_for_user(user_id: str):
         logger.error(f"Error fetching sessions for user {user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch chat sessions.")
 
+@router.get("/sessions/{user_id}/last-active", response_model=ChatSession)
+async def get_last_active_session_for_user(user_id: str):
+    """
+    Retrieve the last active (most recent) chat session for a given user.
+    """
+    try:
+        session_data = db_ops.get_last_active_session(user_id)
+        if not session_data:
+            raise HTTPException(status_code=404, detail="No sessions found for this user.")
+        return ChatSession(**session_data)
+    except Exception as e:
+        logger.error(f"Error fetching last active session for user {user_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch last active session.")
+
 @router.get("/sessions/{session_id}/messages", response_model=MessageListResponse)
 async def get_messages_for_session(session_id: str):
     """

@@ -298,4 +298,37 @@ def delete_chat_session(session_id: str) -> bool:
         logger.error(f"Error deleting session {session_id}: {e}", exc_info=True)
         raise
     finally:
+        db_session.close()
+
+def get_last_active_session(user_id: str) -> Optional[dict]:
+    """Get the most recently created session for a user."""
+    db_session = get_db_session()
+    try:
+        query = text("""
+            SELECT id as session_id, title, created_at 
+            FROM chat_sessions 
+            WHERE user_id = :user_id 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        """)
+        result = db_session.execute(query, {"user_id": user_id}).fetchone()
+        if not result:
+            return None
+        
+        session = dict(result._mapping)
+        session['session_id'] = str(session['session_id'])
+        return session
+    finally:
+        db_session.close()
+
+def get_recent_messages(session_id: str, limit: int = 10) -> List[dict]:
+    """Retrieves the most recent messages for a given session, ordered by timestamp DESC."""
+    db_session = get_db_session()
+    try:
+        results = db_session.execute(
+            text("SELECT role, message, created_at as timestamp FROM chat_messages WHERE session_id = :session_id ORDER BY created_at DESC LIMIT :limit"),
+            {"session_id": session_id, "limit": limit}
+        ).fetchall()
+        return [dict(row._mapping) for row in results]
+    finally:
         db_session.close() 

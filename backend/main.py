@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.apis.data_routes import router as data_router
 from src.apis.chat_routes import router as chat_router
 from src.apis.auth_routes import router as auth_router
+from src.apis.recommendation_routes import router as recommendation_router
 from src.utils.logger import get_logger
 
 # --- Setup ---
@@ -60,6 +61,9 @@ app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 
 # Include the auth routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+
+# Include the recommendation routes
+app.include_router(recommendation_router, prefix="", tags=["Recommendations"])
 
 @app.get("/", tags=["Root"])
 async def read_root():
