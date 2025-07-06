@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.apis.data_routes import router as data_router
-from src.apis.agent_routes import router as agent_router
+from src.apis.chat_routes import router as chat_router
 from src.apis.auth_routes import router as auth_router
 from src.utils.logger import get_logger
 
@@ -19,8 +19,6 @@ app = FastAPI(
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "http://localhost:5173", # Default for Vite
-    "http://localhost:8080",
     "*", 
 ]
 
@@ -55,10 +53,10 @@ async def startup_event():
 
 
 # Include the data routes
-app.include_router(data_router, prefix="/data", tags=["Mock Data"])
+app.include_router(data_router, prefix="/data", tags=["Data"])
 
 # Include the agent routes
-app.include_router(agent_router, prefix="/agent", tags=["Agent"])
+app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 
 # Include the auth routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
