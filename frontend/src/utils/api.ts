@@ -9,7 +9,7 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_BASE_URL_SERVER || 'http://r2dev2-backend-container:8000';
   } else {
     // Client-side: use browser-to-host communication
-    const url = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8015';
+    const url = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
     console.log('🔍 API Base URL:', url);
     return url;
   }
@@ -112,5 +112,60 @@ export async function deleteSession(sessionId: string) {
   // For other successful responses, try to parse JSON
   const result = await res.json();
   console.log('✅ Delete API success:', result);
+  return result;
+}
+
+export async function getLastActiveSession(userId: string) {
+  const API_BASE_URL = getApiBaseUrl();
+  const url = `${API_BASE_URL}/chat/sessions/${userId}/last-active`;
+  
+  console.log('🔍 Last active session API call:', { url, userId });
+  
+  const res = await fetch(url);
+  
+  console.log('🔍 Last active session API response:', { status: res.status, ok: res.ok });
+  
+  if (!res.ok) {
+    if (res.status === 404) {
+      console.log('ℹ️ No active sessions found for user');
+      return null;
+    }
+    const errorText = await res.text();
+    console.error('❌ Last active session API error:', { status: res.status, error: errorText });
+    throw new Error(`Failed to fetch last active session: ${res.status} ${errorText}`);
+  }
+  
+  const result = await res.json();
+  console.log('✅ Last active session API success:', result);
+  return result;
+}
+
+export async function getRecommendations(sessionId: string, numMessages: number = 5) {
+  const API_BASE_URL = getApiBaseUrl();
+  const url = `${API_BASE_URL}/recommendations`;
+  
+  console.log('🔍 Recommendations API call:', { url, sessionId, numMessages });
+  
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      session_id: sessionId,
+      num_messages: numMessages,
+    }),
+  });
+  
+  console.log('🔍 Recommendations API response:', { status: res.status, ok: res.ok });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('❌ Recommendations API error:', { status: res.status, error: errorText });
+    throw new Error(`Failed to fetch recommendations: ${res.status} ${errorText}`);
+  }
+  
+  const result = await res.json();
+  console.log('✅ Recommendations API success:', result);
   return result;
 } 

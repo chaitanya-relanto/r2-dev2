@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Box, Container, Paper, TextField, IconButton, Typography, List, ListItem, CircularProgress, AppBar, Toolbar } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -9,12 +9,14 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Image from 'next/image';
-import { fetchSessions, fetchMessages, sendMessage, renameSession, deleteSession } from '@/utils/api';
+import { fetchSessions, fetchMessages, sendMessage, renameSession, deleteSession, getRecommendations } from '@/utils/api';
 import ChatSidebar from '@/components/ChatSidebar';
+import { Suspense } from 'react';
 
 interface Message {
   text: string;
   sender: 'user' | 'bot';
+  timestamp: Date;
 }
 
 interface Session {
@@ -23,9 +25,17 @@ interface Session {
   created_at: string;
 }
 
-export default function ChatPage() {
+interface Recommendation {
+  suggestions: string[];
+  session_id: string;
+  status: string;
+  duration_seconds: number;
+}
+
+function ChatPageContent() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -33,6 +43,8 @@ export default function ChatPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isSessionsLoading, setIsSessionsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
   const chatEndRef = useRef<null | HTMLDivElement>(null);
 
   const fetchSessionsCb = useCallback(async () => {
@@ -54,6 +66,15 @@ export default function ChatPage() {
       fetchSessionsCb();
     }
   }, [user, fetchSessionsCb]);
+
+  // Handle session query parameter from URL
+  useEffect(() => {
+    const sessionParam = searchParams.get('session');
+    if (sessionParam && user) {
+      console.log('🔍 Loading session from URL parameter:', sessionParam);
+      setCurrentSessionId(sessionParam);
+    }
+  }, [searchParams, user]);
 
   useEffect(() => {
     if (!user && localStorage.getItem('user') === null) {
@@ -91,25 +112,49 @@ export default function ChatPage() {
             const text = item.content || item.message || item.text;
             const sender = item.role === 'user' ? 'user' : 'bot';
             if (text) {
-              formattedMessages.push({ text, sender });
+              formattedMessages.push({ 
+                text, 
+                sender,
+                timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+              });
               console.log(`✅ Added ${sender} message (role-based):`, text);
             }
           } else if (item.user_message && item.assistant_message) {
             // Paired format with both user and assistant messages
-            formattedMessages.push({ text: item.user_message, sender: 'user' });
-            formattedMessages.push({ text: item.assistant_message, sender: 'bot' });
+            formattedMessages.push({ 
+              text: item.user_message, 
+              sender: 'user',
+              timestamp: item.created_at ? new Date(item.created_at) : new Date()
+            });
+            formattedMessages.push({ 
+              text: item.assistant_message, 
+              sender: 'bot',
+              timestamp: item.created_at ? new Date(item.created_at) : new Date()
+            });
             console.log('✅ Added paired messages:', { user: item.user_message, bot: item.assistant_message });
           } else if (item.query && item.response) {
             // Query/response format
-            formattedMessages.push({ text: item.query, sender: 'user' });
-            formattedMessages.push({ text: item.response, sender: 'bot' });
+            formattedMessages.push({ 
+              text: item.query, 
+              sender: 'user',
+              timestamp: item.created_at ? new Date(item.created_at) : new Date()
+            });
+            formattedMessages.push({ 
+              text: item.response, 
+              sender: 'bot',
+              timestamp: item.created_at ? new Date(item.created_at) : new Date()
+            });
             console.log('✅ Added query/response messages:', { user: item.query, bot: item.response });
           } else if (item.type || item.sender) {
             // Message with explicit type/sender
             const text = item.content || item.message || item.text;
             const sender = (item.type === 'user' || item.sender === 'user') ? 'user' : 'bot';
             if (text) {
-              formattedMessages.push({ text, sender });
+              formattedMessages.push({ 
+                text, 
+                sender,
+                timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+              });
               console.log(`✅ Added ${sender} message (type-based):`, text);
             }
           } else {
@@ -124,7 +169,11 @@ export default function ChatPage() {
               // If we have multiple texts, assume first is user, second is bot
               possibleTexts.forEach((text, i) => {
                 const sender = i % 2 === 0 ? 'user' : 'bot';
-                formattedMessages.push({ text, sender });
+                formattedMessages.push({ 
+                  text, 
+                  sender,
+                  timestamp: item.created_at ? new Date(item.created_at) : new Date()
+                });
                 console.log(`✅ Added ${sender} message (fallback):`, text);
               });
             }
@@ -135,7 +184,7 @@ export default function ChatPage() {
         setMessages(formattedMessages);
       } catch (error) {
         console.error('❌ Error fetching messages:', error);
-        setMessages([{ text: 'Failed to load chat history.', sender: 'bot' }]);
+        setMessages([{ text: 'Failed to load chat history.', sender: 'bot', timestamp: new Date() }]);
       } finally {
         setIsLoading(false);
       }
@@ -144,11 +193,39 @@ export default function ChatPage() {
     fetchMessagesCb();
   }, [currentSessionId]);
 
+  // Fetch recommendations when session changes
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!currentSessionId) {
+        setRecommendations([]);
+        return;
+      }
+
+      setIsRecommendationsLoading(true);
+      try {
+        const data = await getRecommendations(currentSessionId, 5);
+        setRecommendations(data.suggestions || []);
+        console.log('✅ Recommendations loaded:', data.suggestions);
+      } catch (error) {
+        console.error('❌ Error fetching recommendations:', error);
+        setRecommendations([]);
+      } finally {
+        setIsRecommendationsLoading(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [currentSessionId]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || !user) return;
 
-    const userMessage: Message = { text: inputValue, sender: 'user' };
+    const userMessage: Message = { 
+      text: inputValue, 
+      sender: 'user',
+      timestamp: new Date()
+    };
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
@@ -164,7 +241,11 @@ export default function ChatPage() {
 
       const data = await sendMessage(payload);
 
-      const botMessage: Message = { text: data.response, sender: 'bot' };
+      const botMessage: Message = { 
+        text: data.response, 
+        sender: 'bot',
+        timestamp: new Date()
+      };
       setMessages((prev) => [...prev, botMessage]);
 
       if (data.session_id && !currentSessionId) {
@@ -172,7 +253,11 @@ export default function ChatPage() {
         fetchSessionsCb(); // Re-fetch sessions to include the new one
       }
     } catch (error) {
-      const errorMessage: Message = { text: 'Sorry, something went wrong.', sender: 'bot' };
+      const errorMessage: Message = { 
+        text: 'Sorry, something went wrong.', 
+        sender: 'bot',
+        timestamp: new Date()
+      };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -199,6 +284,10 @@ export default function ChatPage() {
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleRecommendationClick = (suggestion: string) => {
+    setInputValue(suggestion);
   };
 
   if (!user) {
@@ -302,7 +391,8 @@ export default function ChatPage() {
                         disableGutters
                         sx={{
                         display: 'flex',
-                        justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                        flexDirection: 'column',
+                        alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
                         my: 1,
                         }}
                     >
@@ -334,6 +424,22 @@ export default function ChatPage() {
                             <Typography variant="body1">{msg.text}</Typography>
                         )}
                         </Paper>
+                        
+                        {/* Timestamp */}
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                mt: 0.5,
+                                color: 'text.secondary',
+                                fontSize: '0.75rem',
+                                opacity: 0.7,
+                            }}
+                        >
+                            {msg.timestamp.toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            })}
+                        </Typography>
                     </ListItem>
                     ))}
                     {isLoading && (
@@ -373,6 +479,63 @@ export default function ChatPage() {
                 </List>
             )}
             </Box>
+          
+          {/* Recommended Actions */}
+          {recommendations.length > 0 && (
+            <Box className="px-4 py-2 border-t" sx={{
+              bgcolor: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              '.dark &': {
+                bgcolor: '#1e293b',
+                borderTop: '1px solid #475569',
+              },
+            }}>
+              <Typography variant="caption" sx={{ 
+                color: 'text.secondary', 
+                fontSize: '0.75rem',
+                fontWeight: 'medium',
+                mb: 1,
+                display: 'block'
+              }}>
+                💡 Recommended Actions
+              </Typography>
+              <Box className="flex gap-2 overflow-x-auto pb-1" sx={{
+                '&::-webkit-scrollbar': {
+                  height: '4px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: 'transparent',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#cbd5e1',
+                  borderRadius: '2px',
+                  '.dark &': {
+                    background: '#475569',
+                  },
+                },
+              }}>
+                {recommendations.map((suggestion, index) => (
+                  <Box
+                    key={index}
+                    onClick={() => handleRecommendationClick(suggestion)}
+                    className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm rounded-full px-4 py-2 cursor-pointer transition-colors whitespace-nowrap select-none"
+                    sx={{
+                      color: 'text.primary',
+                      fontSize: '0.875rem',
+                      fontWeight: 'medium',
+                      '&:hover': {
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      },
+                    }}
+                  >
+                    {suggestion}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+          
           <Box 
               component="form" 
               onSubmit={handleSendMessage} 
@@ -413,5 +576,13 @@ export default function ChatPage() {
         </Paper>
       </Box>
     </Box>
+    );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatPageContent />
+    </Suspense>
   );
 } 

@@ -9,6 +9,7 @@ import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getApiBaseUrl } from '@/utils/api';
+import { getLastActiveSession } from '@/utils/api';
 
 interface TicketSummary {
   open: number;
@@ -77,6 +78,12 @@ interface DocDetails {
   // Add other fields as needed based on the API response
 }
 
+interface LastActiveSession {
+  session_id: string;
+  title: string;
+  created_at: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -96,6 +103,7 @@ export default function DashboardPage() {
   const [selectedPR, setSelectedPR] = useState<PRDetails | null>(null);
   const [showDocModal, setShowDocModal] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocDetails | null>(null);
+  const [lastActiveSession, setLastActiveSession] = useState<LastActiveSession | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -151,6 +159,17 @@ export default function DashboardPage() {
           email: user.email,
           role: user.role
         });
+      }
+
+      // Fetch last active session
+      try {
+        console.log('🔍 Fetching last active session...');
+        const lastSession = await getLastActiveSession(user.user_id);
+        setLastActiveSession(lastSession);
+        console.log('✅ Last active session loaded:', lastSession);
+      } catch (error) {
+        console.error('❌ Error fetching last active session:', error);
+        setLastActiveSession(null);
       }
 
       // Fetch ticket data from actual APIs
@@ -551,11 +570,50 @@ export default function DashboardPage() {
               </span>
             </p>
             {userInfo?.email && userInfo.email !== userInfo.name && (
-              <p className={`text-sm ${
+              <p className={`text-sm mb-3 ${
                 resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
               }`}>
                 {userInfo.email}
               </p>
+            )}
+            
+            {/* Last Active Session */}
+            {lastActiveSession && (
+              <div className={`mt-4 p-3 rounded-lg border ${
+                resolvedTheme === 'dark'
+                  ? 'bg-gray-700 border-gray-600'
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${
+                      resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      💬 Last Active Session
+                    </p>
+                    <p className={`text-base font-semibold ${
+                      resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {lastActiveSession.title}
+                    </p>
+                    <p className={`text-xs ${
+                      resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Created: {new Date(lastActiveSession.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/chat?session=${lastActiveSession.session_id}`}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      resolvedTheme === 'dark'
+                        ? 'bg-blue-700 hover:bg-blue-800 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    Continue →
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
         </div>
