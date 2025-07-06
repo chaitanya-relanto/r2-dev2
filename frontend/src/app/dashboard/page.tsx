@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
+import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getApiBaseUrl } from '@/utils/api';
@@ -561,9 +562,12 @@ export default function DashboardPage() {
 
         {/* Ticket Summary Cards */}
         <div className="mb-8">
-          <h2 className={`text-2xl font-bold mb-4 ${
-            resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>Ticket Overview</h2>
+          <div className="flex items-center mb-4">
+            <Image src="/jira.svg" alt="Jira logo" width={28} height={28} className="mr-3" />
+            <h2 className={`text-2xl font-bold ${
+              resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>Ticket Overview</h2>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Open Tickets */}
             <div className={`rounded-lg shadow-sm p-6 border hover:shadow-md transition-all duration-200 ${
@@ -747,7 +751,7 @@ export default function DashboardPage() {
               <nav className="flex">
                 <button
                   onClick={() => setActiveTab('docs')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                  className={`flex items-center py-4 px-6 text-sm font-medium border-b-2 transition-colors duration-200 ${
                     activeTab === 'docs'
                       ? `border-blue-500 ${resolvedTheme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`
                       : `border-transparent ${
@@ -757,11 +761,12 @@ export default function DashboardPage() {
                         }`
                   }`}
                 >
-                  📚 Documentation
+                  <Image src="/confluence.svg" alt="Confluence logo" width={20} height={20} className="mr-2" />
+                  Documentation
                 </button>
                 <button
                   onClick={() => setActiveTab('learnings')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                  className={`flex items-center py-4 px-6 text-sm font-medium border-b-2 transition-colors duration-200 ${
                     activeTab === 'learnings'
                       ? `border-blue-500 ${resolvedTheme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`
                       : `border-transparent ${
@@ -771,7 +776,8 @@ export default function DashboardPage() {
                         }`
                   }`}
                 >
-                  📒 Learning Resources
+                  <Image src="/udemy.svg" alt="Udemy logo" width={16} height={16} className="mr-2" />
+                  Learning Resources
                 </button>
               </nav>
             </div>
