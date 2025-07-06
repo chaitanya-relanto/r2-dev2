@@ -56,6 +56,34 @@ def get_engine() -> Engine:
     return _engine
 
 
+def get_db_dsn() -> str:
+    """
+    Constructs a DSN connection string for a direct psycopg connection.
+    Format: "dbname=... user=... host=... port=..."
+    """
+    password = os.getenv("PG_PASSWORD")
+    user = os.getenv("PG_USER")
+    host = os.getenv("PG_HOST")
+    port = os.getenv("PG_PORT")
+    dbname = os.getenv("PG_DB")
+
+    if not all([user, host, port, dbname]):
+        raise ValueError(
+            "Database connection variables (PG_USER, PG_HOST, PG_PORT, PG_DB) are not fully set."
+        )
+
+    parts = [
+        f"dbname={dbname}",
+        f"user={user}",
+        f"host={host}",
+        f"port={port}",
+    ]
+    if password:
+        parts.append(f"password={password}")
+
+    return " ".join(parts)
+
+
 def get_db_session() -> Session:
     """
     Returns a new database session from a session maker.

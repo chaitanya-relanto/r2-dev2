@@ -7,7 +7,7 @@ from langchain_postgres import PGVector
 from langchain.text_splitter import MarkdownTextSplitter
 
 from src.utils.logger import get_logger
-from src.services.database_manager.connection import get_db_connection_string
+from src.services.database_manager.connection import get_db_connection_string, get_db_dsn
 
 # --- Setup ---
 load_dotenv("configs/.env")
@@ -28,7 +28,7 @@ class EmbeddingEngine:
         logger.info("Initializing EmbeddingEngine...", extra=log_extra)
         self._load_config()
         self.connection_string = get_db_connection_string()
-        self.direct_connection_str = get_db_connection_string(driver="psycopg2")
+        self.direct_connection_str = get_db_dsn()
         self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
         self.text_splitter = MarkdownTextSplitter(
             chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap

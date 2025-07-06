@@ -331,4 +331,19 @@ def get_recent_messages(session_id: str, limit: int = 10) -> List[dict]:
         ).fetchall()
         return [dict(row._mapping) for row in results]
     finally:
+        db_session.close()
+
+def update_document_content(doc_id: str, new_content: str) -> bool:
+    """Updates the content of a specific document."""
+    db_session = get_db_session()
+    try:
+        query = text("UPDATE documents SET content = :new_content WHERE id = :doc_id")
+        result = db_session.execute(query, {"new_content": new_content, "doc_id": doc_id})
+        db_session.commit()
+        return result.rowcount > 0  # type: ignore
+    except Exception as e:
+        db_session.rollback()
+        logger.error(f"Error updating document {doc_id}: {e}", exc_info=True)
+        raise
+    finally:
         db_session.close() 
