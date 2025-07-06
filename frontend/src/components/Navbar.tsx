@@ -7,8 +7,15 @@ import { ThemeToggleButton } from './ThemeToggleButton';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { getApiBaseUrl } from '@/utils/api';
+import MenuIcon from '@mui/icons-material/Menu';
+import { IconButton } from '@mui/material';
 
-export default function Navbar() {
+interface NavbarProps {
+  onSidebarToggle?: () => void;
+  showSidebarToggle?: boolean;
+}
+
+export default function Navbar({ onSidebarToggle, showSidebarToggle = false }: NavbarProps) {
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
@@ -106,6 +113,21 @@ export default function Navbar() {
         <div className="flex items-center justify-between px-6 py-3">
           {/* Left side - Branding + Navigation */}
           <div className="flex items-center gap-x-8">
+            {/* Hamburger Menu for Chat Page */}
+            {showSidebarToggle && (
+              <IconButton
+                onClick={onSidebarToggle}
+                sx={{
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
+            
             {/* Branding */}
             <Link href="/" className="flex items-center">
               <Image
