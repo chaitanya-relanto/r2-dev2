@@ -1268,10 +1268,10 @@ export default function DashboardPage() {
                     p: ({children}) => <p className={`mb-4 leading-relaxed ${
                       resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                     }`}>{children}</p>,
-                    ul: ({children}) => <ul className={`list-disc list-inside mb-4 space-y-1 ${
+                    ul: ({children}) => <ul className={`list-disc pl-5 mb-4 space-y-1 ${
                       resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                     }`}>{children}</ul>,
-                    ol: ({children}) => <ol className={`list-decimal list-inside mb-4 space-y-1 ${
+                    ol: ({children}) => <ol className={`list-decimal pl-5 mb-4 space-y-1 ${
                       resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                     }`}>{children}</ol>,
                     li: ({children}) => <li className={`${

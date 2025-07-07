@@ -327,6 +327,7 @@ function ChatPageContent() {
             flex: '1 1 auto',
             display: 'flex',
             flexDirection: 'column',
+            overflow: 'hidden', // Prevent parent from scrolling
             bgcolor: '#f1f5f9', // More noticeable light gray background
             border: '1px solid #e2e8f0',
             '.dark &': {
@@ -372,7 +373,7 @@ function ChatPageContent() {
                   </Typography>
               </Toolbar>
           </AppBar>
-          <Box className="flex-grow p-4 overflow-y-auto relative">
+          <Box sx={{ flex: '1 1 auto', p: 2, overflowY: 'auto', position: 'relative' }}>
             {messages.length === 0 && !isLoading ? (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <Image
@@ -412,6 +413,9 @@ function ChatPageContent() {
                             '& strong': { fontWeight: 'bold' },
                             '& ul, & ol': { 
                                 textAlign: 'left', 
+                                paddingLeft: '20px',
+                            },
+                            '& ul ul, & ol ol, & ul ol, & ol ul': {
                                 paddingLeft: '20px',
                             },
                         }}
@@ -483,6 +487,7 @@ function ChatPageContent() {
           {/* Recommended Actions */}
           {recommendations.length > 0 && (
             <Box className="px-4 py-2 border-t" sx={{
+              flexShrink: 0,
               bgcolor: '#f8fafc',
               borderTop: '1px solid #e2e8f0',
               '.dark &': {
@@ -541,6 +546,7 @@ function ChatPageContent() {
               onSubmit={handleSendMessage} 
               className="p-4 flex items-center"
               sx={{
+                  flexShrink: 0,
                   bgcolor: '#ffffff',
                   borderTop: '2px solid #cbd5e1',
                   boxShadow: '0 -1px 3px rgba(0, 0, 0, 0.1)',
@@ -576,7 +582,7 @@ function ChatPageContent() {
         </Paper>
       </Box>
     </Box>
-    );
+  );
 }
 
 export default function ChatPage() {

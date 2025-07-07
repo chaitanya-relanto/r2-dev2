@@ -15,6 +15,24 @@ export function getApiBaseUrl(): string {
   }
 }
 
+/**
+ * Creates a Basic Authentication header.
+ * Reads credentials from environment variables.
+ */
+function getBasicAuthHeader(): { Authorization: string } | {} {
+  const user = process.env.NEXT_PUBLIC_BASIC_AUTH_USER;
+  const pass = process.env.NEXT_PUBLIC_BASIC_AUTH_PASS;
+
+  if (user && pass) {
+    const encoded = btoa(`${user}:${pass}`);
+    return { Authorization: `Basic ${encoded}` };
+  }
+
+  console.warn('Basic Auth credentials are not set. Requests to protected endpoints may fail.');
+  
+  return {};
+}
+
 export async function fetchSessions(userId: string) {
   const API_BASE_URL = getApiBaseUrl();
   const res = await fetch(`${API_BASE_URL}/chat/sessions/${userId}`);
@@ -43,7 +61,10 @@ export async function sendMessage(payload: SendMessagePayload) {
   const API_BASE_URL = getApiBaseUrl();
   const res = await fetch(`${API_BASE_URL}/chat/agent`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      ...getBasicAuthHeader() 
+    },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -93,6 +114,9 @@ export async function deleteSession(sessionId: string) {
   
   const res = await fetch(url, {
     method: 'DELETE',
+    headers: {
+      ...getBasicAuthHeader()
+    }
   });
   
   console.log('🔍 Delete API response:', { status: res.status, ok: res.ok });
@@ -150,6 +174,7 @@ export async function getRecommendations(sessionId: string, numMessages: number 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getBasicAuthHeader(),
     },
     body: JSON.stringify({
       session_id: sessionId,
@@ -167,5 +192,31 @@ export async function getRecommendations(sessionId: string, numMessages: number 
   
   const result = await res.json();
   console.log('✅ Recommendations API success:', result);
+
+  const cleanSuggestion = (s: string) => {
+    // This regex removes any trailing characters that are backslashes, quotes, or commas.
+    return s.trim().replace(/[\\",]+$/, '');
+  };
+
+  if (result.suggestions && Array.isArray(result.suggestions)) {
+    result.suggestions = result.suggestions.map(cleanSuggestion);
+  } else if (result.suggestions && typeof result.suggestions === 'string') {
+    // This is fallback logic in case the API response format changes to a single string.
+    try {
+      const parsedSuggestions = JSON.parse(result.suggestions);
+      if (Array.isArray(parsedSuggestions)) {
+        result.suggestions = parsedSuggestions.map(cleanSuggestion);
+      }
+    } catch (e) {
+        result.suggestions = result.suggestions
+        .replace(/^"|"$/g, '')
+        .split('","')
+        .map(cleanSuggestion);
+    }
+  } else if (result.suggestions && !Array.isArray(result.suggestions)) {
+      console.error('❌ Unexpected type for suggestions:', typeof result.suggestions);
+      result.suggestions = [];
+  }
+  
   return result;
 } 
