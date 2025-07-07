@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.apis.data_routes import router as data_router
-from src.apis.chat_routes import router as chat_router
-from src.apis.auth_routes import router as auth_router
-from src.apis.recommendation_routes import router as recommendation_router
+from src.apis.routes.data_routes import router as data_router
+from src.apis.routes.chat_routes import router as chat_router
+from src.apis.routes.auth_routes import router as auth_router
+from src.apis.routes.recommendation_routes import router as recommendation_router
 from src.utils.logger import get_logger
 
 # --- Setup ---
