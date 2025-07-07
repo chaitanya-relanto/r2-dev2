@@ -233,7 +233,7 @@ The application uses a PostgreSQL database. The schema is composed of the follow
 
 The `scripts/` directory contains several useful Python scripts for managing the application's data:
 
--   **`populate_mock_data.py`**: Populates the database with mock data for users, tickets, etc. from the `data/` directory.
+-   **`populate_mock_data.py`**: Populates the database with mock data for users, tickets, etc. into the database tables.
 -   **`embed_docs.py`**: Reads documents, generates embeddings for them, and stores them for semantic search.
 -   **`embed_learning.py`**: Does the same for learning resources.
 -   **`elaborate_docs.py`**: Uses an LLM to elaborate on or expand existing documentation.
