@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 import time
@@ -8,6 +8,7 @@ from src.services.database_manager import operations as db_ops
 
 from src.services.agent.chat import ChatAgent
 from src.utils.logger import get_logger
+from src.apis.deps.basic_auth import basic_auth_dependency
 
 # --- Setup ---
 router = APIRouter()
@@ -56,7 +57,9 @@ class RenameSessionRequest(BaseModel):
 
 # --- API Endpoint ---
 @router.post("/agent", response_model=ChatResponse)
-async def chat_with_agent(request: ChatRequest):
+async def chat_with_agent(
+    request: ChatRequest, user: str = Depends(basic_auth_dependency)
+):
     """
     Interact with the LangGraph-based developer assistant.
     """
@@ -160,7 +163,7 @@ async def rename_session(session_id: str, request: RenameSessionRequest):
         raise HTTPException(status_code=500, detail="Failed to rename chat session.")
 
 @router.delete("/sessions/{session_id}", status_code=204)
-async def delete_session(session_id: str):
+async def delete_session(session_id: str, user: str = Depends(basic_auth_dependency)):
     """
     Delete a specific chat session and all its messages.
     """

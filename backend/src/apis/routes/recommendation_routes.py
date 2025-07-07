@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import time
 
 from src.services.recommendation_engine.service import RecommendationService
 from src.utils.logger import get_logger
+from src.apis.deps.basic_auth import basic_auth_dependency
 
 # --- Setup ---
 router = APIRouter()
@@ -31,7 +32,9 @@ class RecommendationResponse(BaseModel):
 
 # --- API Endpoints ---
 @router.post("/recommendations", response_model=RecommendationResponse)
-async def get_recommendations(request: RecommendationRequest):
+async def get_recommendations(
+    request: RecommendationRequest, user: str = Depends(basic_auth_dependency)
+):
     """
     Generate 2-3 follow-up action recommendations based on recent chat messages in a session.
     
