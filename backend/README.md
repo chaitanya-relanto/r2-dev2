@@ -1,4 +1,4 @@
-# R2-Dev2: AI Developer Productivity Assistant API
+# R2-Dev2: Backend
 
 This repository contains the backend service for the AI Developer Productivity Assistant. It's a FastAPI application designed to provide a conversational AI interface for developers, with tools for searching documents, interacting with Jira tickets, summarizing pull requests, and more.
 
