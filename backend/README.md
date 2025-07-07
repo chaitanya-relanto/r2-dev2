@@ -20,6 +20,8 @@ This repository contains the backend service for the AI Developer Productivity A
 - [Core Components and Notes](#core-components-and-notes)
   - [Chat Agent (LangGraph)](#chat-agent-langgraph)
   - [NL2SQL (Natural Language to SQL)](#nl2sql-natural-language-to-sql)
+  - [RAG with PGVector](#rag-with-pgvector)
+  - [LLM Observability (LangSmith)](#llm-observability-langsmith)
   - [Basic Authentication](#basic-authentication)
   - [Database Schema](#database-schema)
 - [Scripts](#scripts)
@@ -43,9 +45,10 @@ This repository contains the backend service for the AI Developer Productivity A
 - Python 3.13
 - FastAPI
 - LangChain & LangGraph
-- PostgreSQL
+- PostgreSQL with PGVector
 - Pipenv
 - Docker
+- LangSmith (for LLM Observability)
 
 ## Project Structure
 
@@ -53,17 +56,26 @@ A brief overview of the key directories:
 
 ```
 backend/
-├── artifacts/          # Output for generated files like graph visualizations
-├── configs/            # Configuration files, including .env files
-├── data/               # Data for mock data population
-├── scripts/            # Helper scripts for populating DB, embedding docs, etc.
+├── artifacts/                        # Output for generated files like visualizations
+├── configs/                          # Configuration files, including .env files
+├── data/                             # Data for mock data population
+├── scripts/                          # Helper scripts for populating DB, embedding docs
 ├── src/
-│   ├── apis/           # FastAPI routers, dependencies, and route definitions
-│   ├── services/       # Core business logic for agent, NL2SQL, DB, etc.
-│   └── utils/          # Utility functions like logging
-├── Dockerfile          # Docker configuration
-├── main.py             # FastAPI application entry point
-└── Pipfile             # Project dependencies
+│   ├── apis/
+│   │   ├── deps/                     # Dependencies for routes (e.g., authentication)
+│   │   └── routes/                   # FastAPI routers for different API endpoints
+│   ├── services/
+│   │   ├── agent/                    # LangGraph agent definition and tools
+│   │   ├── database_manager/         # Database connection and operations
+│   │   ├── doc_search/               # Document search services
+│   │   ├── embedding_engine/         # Text embedding generation
+│   │   ├── pr_summarizer/            # PR summarization logic
+│   │   ├── recommendation_engine/    # Recommendation service
+│   │   └── vector_search/            # Vector similarity search
+│   └── utils/                        # Utility functions like logging
+├── Dockerfile                        # Docker configuration
+├── main.py                           # FastAPI application entry point
+└── Pipfile                           # Project dependencies
 ```
 
 ## Getting Started
@@ -107,6 +119,12 @@ PG_DB=your_db_name
 
 # OpenAI API Key
 OPENAI_API_KEY=your_openai_api_key
+
+# LangSmith LLM Observability
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+LANGCHAIN_API_KEY=your_langchain_api_key
+LANGCHAIN_PROJECT=your_project_name
 
 # Basic Authentication Credentials for protected endpoints
 BASIC_AUTH_USER=your_username
@@ -170,16 +188,28 @@ The core of the service is the `ChatAgent`, a conversational agent built using [
 
 When a user query is received, the agent first determines if it's a question that can be answered by querying the database (NL2SQL) or if it requires a general-purpose tool. Based on this classification, it routes the query to the appropriate service. The agent maintains the conversation state, including message history, which allows for contextual follow-up questions.
 
-A visualization of the agent's graph is saved to `artifacts/chat_graph.png` upon application startup.
+A visualization of the agent's graph is generated upon application startup and can be seen below. This graph illustrates the flow of logic within the agent.
+
+![Chat Agent Graph](artifacts/chat_graph.png)
 
 ### NL2SQL (Natural Language to SQL)
 
 The NL2SQL service allows the agent to answer questions about data stored in the PostgreSQL database using natural language. For example, a user can ask "How many open bugs are assigned to me?" and the service will:
 1.  Convert the natural language question into a SQL query.
 2.  Execute the query against the database.
-3.  Return the results to the agent, which then formulates a natural language response for the user.
+3.  Return the results to the LLM, which then formulates a natural language response for the user.
 
 This is powered by LangChain's NL2SQL capabilities and is integrated as a node in the `ChatAgent`'s graph.
+
+### RAG with PGVector
+
+Our application implements a Retrieval-Augmented Generation (RAG) pipeline to provide context-aware responses. We generate vector embeddings for our technical documentation and learning resources using OpenAI's `text-embedding-3-small` model. These embeddings are stored and indexed in a PostgreSQL database using the [PGVector](https://github.com/pgvector/pgvector) extension.
+
+PGVector allows for efficient nearest-neighbor searches, enabling the agent to quickly find the most relevant document chunks for a given user query. This retrieved context is then passed to the LLM to generate a more accurate and informative response.
+
+### LLM Observability (LangSmith)
+
+We use [LangSmith](https://smith.langchain.com/) for LLM observability and tracing. This allows us to monitor, debug, and evaluate the performance of our LangGraph agent and other LLM-powered components in real-time. To enable LangSmith, you'll need to configure the corresponding environment variables shown in the [Environment Configuration](#environment-configuration) section.
 
 ### Basic Authentication
 
