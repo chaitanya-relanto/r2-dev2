@@ -23,12 +23,25 @@ function getBasicAuthHeader(): { Authorization: string } | {} {
   const user = process.env.NEXT_PUBLIC_BASIC_AUTH_USER;
   const pass = process.env.NEXT_PUBLIC_BASIC_AUTH_PASS;
 
+  console.log('🔍 Basic Auth Debug:', {
+    user: user ? `${user.substring(0, 3)}...` : 'undefined',
+    pass: pass ? `${pass.substring(0, 3)}...` : 'undefined',
+    hasUser: !!user,
+    hasPass: !!pass
+  });
+
   if (user && pass) {
     const encoded = btoa(`${user}:${pass}`);
-    return { Authorization: `Basic ${encoded}` };
+    const authHeader = { Authorization: `Basic ${encoded}` };
+    console.log('✅ Basic Auth header created:', { 
+      authHeaderPresent: !!authHeader.Authorization,
+      encodedLength: encoded.length
+    });
+    return authHeader;
   }
 
-  console.warn('Basic Auth credentials are not set. Requests to protected endpoints may fail.');
+  console.warn('⚠️ Basic Auth credentials are not set. Requests to protected endpoints may fail.');
+  console.warn('Expected env vars: NEXT_PUBLIC_BASIC_AUTH_USER, NEXT_PUBLIC_BASIC_AUTH_PASS');
   
   return {};
 }
@@ -219,4 +232,113 @@ export async function getRecommendations(sessionId: string, numMessages: number 
   }
   
   return result;
+}
+
+// Debug function to test basic auth - can be called from browser console
+export function testBasicAuth() {
+  console.log('🧪 Testing Basic Auth Configuration...');
+  
+  const user = process.env.NEXT_PUBLIC_BASIC_AUTH_USER;
+  const pass = process.env.NEXT_PUBLIC_BASIC_AUTH_PASS;
+  
+  console.log('Environment Variables:', {
+    NEXT_PUBLIC_BASIC_AUTH_USER: user || 'NOT SET',
+    NEXT_PUBLIC_BASIC_AUTH_PASS: pass ? '***SET***' : 'NOT SET'
+  });
+  
+  if (user && pass) {
+    const encoded = btoa(`${user}:${pass}`);
+    const expectedHeader = `Basic ${encoded}`;
+    console.log('Generated Auth Header:', expectedHeader);
+    
+    // Test against expected backend credentials
+    const expectedUser = 'r2-dev2';
+    const expectedPass = 'MayThe404BeWithYou!';
+    const expectedEncoded = btoa(`${expectedUser}:${expectedPass}`);
+    const expectedBackendHeader = `Basic ${expectedEncoded}`;
+    
+    console.log('Expected Backend Header:', expectedBackendHeader);
+    console.log('Headers Match:', expectedHeader === expectedBackendHeader);
+    
+    return {
+      status: 'success',
+      generated: expectedHeader,
+      expected: expectedBackendHeader,
+      match: expectedHeader === expectedBackendHeader
+    };
+  } else {
+    console.error('❌ Missing environment variables!');
+    return {
+      status: 'error',
+      message: 'Missing NEXT_PUBLIC_BASIC_AUTH_USER or NEXT_PUBLIC_BASIC_AUTH_PASS'
+    };
+  }
+}
+
+// Test function to directly call a protected endpoint
+export async function testProtectedEndpoint() {
+  console.log('🧪 Testing Protected Endpoint...');
+  
+  const API_BASE_URL = getApiBaseUrl();
+  const authHeader = getBasicAuthHeader();
+  
+  console.log('API Base URL:', API_BASE_URL);
+  console.log('Auth Header Object:', authHeader);
+  
+  try {
+    const testUrl = `${API_BASE_URL}/recommendations`;
+    const testPayload = {
+      session_id: 'test-session-id',
+      num_messages: 1
+    };
+    
+    console.log('Test Request:', {
+      url: testUrl,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader
+      },
+      body: testPayload
+    });
+    
+    const response = await fetch(testUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader
+      },
+      body: JSON.stringify(testPayload)
+    });
+    
+    console.log('Response Status:', response.status);
+    console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
+    
+    if (response.status === 401) {
+      console.error('❌ 401 Unauthorized - Check your credentials!');
+      const errorText = await response.text();
+      console.error('Error Response:', errorText);
+      return { status: 'unauthorized', error: errorText };
+    }
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Non-200 Response:', errorText);
+      return { status: 'error', error: errorText, httpStatus: response.status };
+    }
+    
+    const result = await response.json();
+    console.log('✅ Success! Response:', result);
+    return { status: 'success', data: result };
+    
+  } catch (error) {
+    console.error('❌ Network/Fetch Error:', error);
+    return { status: 'network_error', error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+// Make debug functions available globally for browser console testing
+if (typeof window !== 'undefined') {
+  (window as any).testBasicAuth = testBasicAuth;
+  (window as any).testProtectedEndpoint = testProtectedEndpoint;
 } 

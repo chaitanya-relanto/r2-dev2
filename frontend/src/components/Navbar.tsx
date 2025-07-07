@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import AboutModal from './AboutModal';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { getApiBaseUrl } from '@/utils/api';
@@ -19,6 +20,7 @@ export default function Navbar({ onSidebarToggle, showSidebarToggle = false }: N
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [userInfo, setUserInfo] = useState<{ name?: string; email?: string } | null>(null);
   const pathname = usePathname();
@@ -67,6 +69,11 @@ export default function Navbar({ onSidebarToggle, showSidebarToggle = false }: N
   const handleLogout = () => {
     logout();
     setIsDropdownOpen(false);
+    setIsAvatarDropdownOpen(false);
+  };
+
+  const handleAboutClick = () => {
+    setIsAboutModalOpen(true);
     setIsAvatarDropdownOpen(false);
   };
 
@@ -209,6 +216,15 @@ export default function Navbar({ onSidebarToggle, showSidebarToggle = false }: N
                         {/* Dropdown Actions */}
                         <div className="py-1">
                           <button
+                            onClick={handleAboutClick}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            About R2-Dev2
+                          </button>
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2"
                           >
@@ -290,6 +306,12 @@ export default function Navbar({ onSidebarToggle, showSidebarToggle = false }: N
           }}
         />
       )}
+      
+      {/* About Modal */}
+      <AboutModal 
+        isOpen={isAboutModalOpen} 
+        onClose={() => setIsAboutModalOpen(false)} 
+      />
     </header>
   );
 } 
