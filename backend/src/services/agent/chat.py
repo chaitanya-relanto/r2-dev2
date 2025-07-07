@@ -19,6 +19,7 @@ from src.services.agent.tools import (
     pr_summary_tool,
     doc_search_tool,
     learning_search_tool,
+    pr_search_tool,
 )
 from src.services.agent.nl2sql import NL2SQLService
 
@@ -45,6 +46,7 @@ class ChatAgent:
             pr_summary_tool,
             doc_search_tool,
             learning_search_tool,
+            pr_search_tool,
         ]
         self.tool_map = {tool.name: tool for tool in self.tools}
 
@@ -125,11 +127,43 @@ class ChatAgent:
         return {"messages": state["messages"], "is_sql_query": is_sql}
         
     def call_planner(self, state: AgentState):
-        response = self.planner_model.invoke(state["messages"])
+        # Add system prompt for better tool selection and context handling
+        system_prompt = """You are a developer assistant that helps users with their tickets, pull requests, and technical documentation. 
+
+When a user asks about "this" or uses ambiguous references:
+1. Look at the conversation history to understand what they're referring to
+2. If the context is about a specific ticket title or topic, use that as the search query
+3. If unclear, ask for clarification rather than guessing
+
+Available tools:
+- pr_search_tool: Search for pull requests by ticket title, PR title, or description
+- pr_diff_tool: Get git diffs for a specific PR ID  
+- pr_summary_tool: Summarize git diffs
+- doc_search_tool: Search technical documentation
+- learning_search_tool: Search internal learning resources
+
+When searching for PRs, use descriptive search terms from the conversation context."""
+
+        # Create a prompt template with system message
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="messages")
+        ])
+        
+        # Chain the prompt with the model
+        chain = prompt | self.planner_model
+        response = chain.invoke({"messages": state["messages"]})
         return {"messages": [response]}
 
     def generate_response_node(self, state: AgentState):
         system_template = """You are a helpful assistant. Synthesize a final response for the user based on the conversation history. Be concise and answer the user's question directly.
+
+IMPORTANT: 
+- If a user asks specifically about PRs/pull requests, only provide information about PRs, not tickets
+- If no PRs are found, inform the user that no PRs were found, don't substitute with ticket information
+- Only provide ticket information when the user specifically asks about tickets
+- Use the most recent tool output to answer the user's question
+
 {context}"""
 
         nl2sql_results = state.get("nl2sql_results")
@@ -140,7 +174,7 @@ class ChatAgent:
             context_string = f"\\nHere is some context from a database query that was run to help answer the user's question. Use this to formulate your response:\\n\\n{json.dumps(nl2sql_results, indent=2, default=str)}"
         elif any(isinstance(m, ToolMessage) for m in state["messages"]):
             # For the regular tool path, the tool output is already in the message history.
-            context_string = "\\nIf the last message is a tool output, summarize it for the user."
+            context_string = "\\nThe most recent tool output contains the answer to the user's question. Use only that information to respond."
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_template),

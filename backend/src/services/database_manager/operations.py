@@ -346,4 +346,64 @@ def update_document_content(doc_id: str, new_content: str) -> bool:
         logger.error(f"Error updating document {doc_id}: {e}", exc_info=True)
         raise
     finally:
+        db_session.close()
+
+def search_pull_requests_by_query(query: str, user_id: str) -> List[dict]:
+    """Search for pull requests based on query terms matching ticket titles/descriptions or PR titles/summaries."""
+    db_session = get_db_session()
+    try:
+        base_query = """
+            SELECT DISTINCT pr.id, pr.title, pr.summary, pr.ticket_id, pr.author_id, pr.project_id,
+                   jt.title as ticket_title, jt.description as ticket_description, 
+                   jt.status as ticket_status, p.name as project_name
+            FROM pull_requests pr
+            JOIN jira_tickets jt ON pr.ticket_id = jt.id
+            JOIN projects p ON pr.project_id = p.id
+            WHERE (
+                LOWER(jt.title) LIKE LOWER(:search_term) OR 
+                LOWER(jt.description) LIKE LOWER(:search_term) OR
+                LOWER(pr.title) LIKE LOWER(:search_term) OR
+                LOWER(pr.summary) LIKE LOWER(:search_term)
+            )
+        """
+        
+        params = {"search_term": f"%{query}%", "user_id": user_id}
+        
+        # Filter by tickets assigned to the user
+        base_query += " AND jt.assigned_to = :user_id"
+        base_query += " ORDER BY pr.title"
+        
+        sql_query = text(base_query)
+        result = db_session.execute(sql_query, params).fetchall()
+        
+        prs = []
+        for row in result:
+            pr = dict(row._mapping)
+            pr['id'] = str(pr['id'])
+            pr['ticket_id'] = str(pr['ticket_id'])
+            pr['author_id'] = str(pr['author_id'])
+            pr['project_id'] = str(pr['project_id'])
+            prs.append(pr)
+        return prs
+    finally:
+        db_session.close()
+
+def get_git_diffs_by_pr_id(pr_id: str, user_id: str) -> List[str]:
+    """Get all git diff texts for a specific pull request ID with user access control."""
+    db_session = get_db_session()
+    try:
+        # Check if user has access to this PR by verifying the associated ticket is assigned to them
+        access_check_stmt = text("""
+            SELECT gd.diff_text 
+            FROM git_diffs gd
+            JOIN pull_requests pr ON gd.pr_id = pr.id
+            JOIN jira_tickets jt ON pr.ticket_id = jt.id
+            WHERE gd.pr_id = :pr_id AND jt.assigned_to = :user_id
+        """)
+        results = db_session.execute(access_check_stmt, {"pr_id": pr_id, "user_id": user_id}).fetchall()
+        return [row[0] for row in results] if results else []
+    except Exception as e:
+        logger.error(f"Error getting git diffs for PR {pr_id} and user {user_id}: {e}", exc_info=True)
+        raise
+    finally:
         db_session.close() 

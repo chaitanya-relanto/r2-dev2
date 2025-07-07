@@ -3,6 +3,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 
 from src.services.database_manager.connection import get_db_session
+from src.services.database_manager.operations import search_pull_requests_by_query, get_git_diffs_by_pr_id
 from src.services.pr_summarizer.summarize import PRSummarizer
 from src.services.doc_search.search import VectorSearchService
 from src.utils.logger import get_logger
@@ -28,23 +29,19 @@ except Exception as e:
 def pr_diff_tool(pr_id: str, user_id: str) -> str:
     """
     Retrieves the raw text of all git diffs associated with a Pull Request ID.
-    The user_id is received but not currently used for access control on diffs.
+    Access is restricted to PRs for tickets assigned to the requesting user.
     """
     logger.info(f"Executing PR diff tool for ID: {pr_id}")
-    session = get_db_session()
     try:
-        stmt = text("SELECT diff_text FROM git_diffs WHERE pr_id = :pr_id")
-        results = session.execute(stmt, {"pr_id": pr_id}).fetchall()
+        diff_texts = get_git_diffs_by_pr_id(pr_id, user_id)
         
-        if not results:
-            return f"Error: No diffs found for PR with ID {pr_id}."
+        if not diff_texts:
+            return f"Error: No diffs found for PR with ID {pr_id} or you don't have access to it."
             
-        return "\\n---_---_---\\n".join([r[0] for r in results])
+        return "\\n---_---_---\\n".join(diff_texts)
     except Exception as e:
         logger.error(f"Error in pr_diff_tool for {pr_id}: {e}", exc_info=True)
         return "An error occurred during PR diff retrieval."
-    finally:
-        session.close()
 
 @tool
 def pr_summary_tool(diff_text: str, user_id: str) -> str:
@@ -77,4 +74,37 @@ def learning_search_tool(query: str, user_id: str) -> str:
     logger.info(f"Executing learning search for query: '{query}'")
     if not vector_search_service:
         return "Error: Learning Search service is not available."
-    return vector_search_service.search_learnings(query) 
+    return vector_search_service.search_learnings(query)
+
+@tool
+def pr_search_tool(query: str, user_id: str) -> str:
+    """
+    Searches for pull requests based on query terms that match ticket titles/descriptions or PR titles/summaries.
+    Only returns PRs for tickets assigned to the requesting user.
+    """
+    logger.info(f"Executing PR search for query: '{query}' and user: {user_id}")
+    try:
+        # Search for PRs assigned to the user
+        prs = search_pull_requests_by_query(query, user_id)
+        logger.info(f"PR search returned {len(prs)} results for query: '{query}'")
+        
+        if not prs:
+            message = f"No pull requests found matching query: '{query}' for your assigned tickets."
+            logger.info(message)
+            return message
+        
+        result_lines = []
+        for pr in prs:
+            result_lines.append(f"PR #{pr['id']}: {pr['title']}")
+            result_lines.append(f"  Project: {pr['project_name']}")
+            result_lines.append(f"  Ticket: {pr['ticket_title']} (Status: {pr['ticket_status']})")
+            if pr['summary']:
+                result_lines.append(f"  Summary: {pr['summary']}")
+            result_lines.append("")
+        
+        result = "\n".join(result_lines)
+        logger.info(f"PR search tool returning formatted results for {len(prs)} PRs")
+        return result
+    except Exception as e:
+        logger.error(f"Error in pr_search_tool for query '{query}': {e}", exc_info=True)
+        return "An error occurred during PR search." 
